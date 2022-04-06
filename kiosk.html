@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk</title>
+    <!-- inline style -->
+    <style type="text/css">
+        body {
+            background-color: #000;
+            color: #0f0;
+            height: 100%;
+            margin: 0;
+        }
+
+        @font-face {
+            font-family: 'B612';
+            src: url('fonts/B612-Regular.ttf');
+        }
+        .statusBar {
+            /* let the divs stack horizontally */
+            display: flex;
+            flex: 0 1 auto;
+            color: #0f0;
+        }
+        .graphics{
+            /* position: absolute; */
+            flex: 1 1 auto;
+            width: 100%;
+            /* box-sizing: content-box; */
+        }
+        .footer {
+            /* let the divs stack horizontally */
+            flex: 0 1 100px;
+            color: #0f0;
+        }
+
+    </style>
+    <!-- inline script -->
+    <script>
+        var seconds = 0;
+        // every second update id=clock    
+        setInterval(function () {
+            var d = new Date();
+            var h = d.getHours();
+            var m = d.getMinutes();
+            var s = d.getSeconds();
+            seconds = s;
+            //time zone name
+            var timezone = d.toString().split('(')[1].split(')')[0];
+            // military time
+            // var ampm = h >= 12 ? 'pm' : 'am';
+            // h = h % 12;
+            // h = h ? h : 12;
+            var ampm = "";
+            m = m < 10 ? '0' + m : m;
+            s = s < 10 ? '0' + s : s;
+            document.getElementById('clock').innerHTML = h + ':' + m + ':' + s + ' ' + ampm + timezone;
+
+        }, 1000);
+        // every time the window redraws increase id=counter
+        var counter = 0;
+
+        setInterval(function () {
+            counter++;
+            document.getElementById('counter').innerHTML = counter;
+        }, 16);
+
+        //use requestAnimationFrame to calculsubPixelcoeficient
+        var delta = 0;
+        var fpsInterval = 1000;
+        var fpsHistory = [];
+        var fpsHistoryLength = 100;
+        var fpsHistoryIndex = 0;
+        var fpsHistorySum = 0;
+        var fpsHistoryAverage = 0;
+        var minimumFps = 1000;
+        var lastLoop = new Date;
+        function updateFPS() {
+            thisLoop = new Date;
+            delta = thisLoop - lastLoop;
+            lastLoop = thisLoop;
+            fps = 1000 / delta;
+            fpsHistorySum += fps;
+            fpsHistoryIndex++;
+            if (fpsHistoryIndex >= fpsHistoryLength) {
+                fpsHistoryIndex = 0;
+                fpsHistorySum = 0;
+            }
+            // set minimum fps
+            if (fps < minimumFps) {
+                minimumFps = fps;
+            }
+            fpsHistory[fpsHistoryIndex] = fps;
+            fpsHistoryAverage = fpsHistorySum / fpsHistoryLength;
+            // show average fps with decimal in fixed position
+            // document.getElementById('fps').innerHTML = "fps" + fpsHistoryAverage.toFixed(2) + " " + delta;
+            document.getElementById('fps').innerHTML = "fps" + fps.toFixed(2) + " minimum:" + minimumFps.toFixed(2);
+
+        }
+        var drawingWidth = 100;
+        var drawingHeight = 100;
+        function updateCanvas() {
+            // draw red x across entire canvas if telemetry is not up to date.
+            canvas = document.getElementById('canvas');
+            // check for canvas support
+
+            if (!canvas) {
+                console.log('canvas element not supported');
+                return;
+            }
+            if (!canvas.getContext) {
+                console.log('canvas context not supported');
+                return;
+            }
+            var centerx = drawingWidth / 2;
+            var centery = drawingHeight / 2;
+            ctx = canvas.getContext('2d');
+            // set stroke width to 2 point
+            var path1 = new Path2D();
+            path1.moveTo(0, 0);
+            //red
+            ctx.strokeStyle = '#f00';
+            path1.lineTo(drawingWidth, drawingHeight);
+            path1.moveTo(drawingWidth, 0);
+            path1.lineTo(0, drawingHeight);
+            ctx.stroke(path1);
+            var path2 = new Path2D();
+            // centered width 100 height 100
+            path2.rect(centerx - 50, centery - 50, 100, 100);
+            ctx.stroke(path2);
+        }
+        function setupCanvas() {
+            // get the canvas css pixels, and set height and width
+            canvas = document.getElementById('canvas');
+            // get the number os pixels wide the canvas is.
+            var subPixelcoeficient = 2;
+            var cssWidthPixels = window.innerWidth * subPixelcoeficient;
+            var cssHeightPixels = window.innerHeight * subPixelcoeficient;
+            console.log("css width:" + cssWidthPixels + " height:" + cssHeightPixels);
+            canvas.width = cssWidthPixels;
+            canvas.height = cssHeightPixels;
+            // scale drawing space of 1000x1000 to fit the canvas
+            var scale = Math.min(cssWidthPixels / drawingWidth, cssHeightPixels / drawingHeight);
+            console.log("scale:" + scale);
+            ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+            // find if the canvas is using hardware rendering
+            var isHardware = ctx.webkitBackingStorePixelRatio ||
+                ctx.mozBackingStorePixelRatio ||
+                ctx.msBackingStorePixelRatio ||
+                ctx.oBackingStorePixelRatio ||
+                ctx.backingStorePixelRatio;
+            console.log("isHardware:" + isHardware);
+
+        }
+        // request animation frame calls updateFPS every frame.
+        // only start after the page has loaded.
+        window.onload = function () {
+            setupCanvas();
+            window.requestAnimationFrame(function loop() {
+                updateFPS();
+                updateCanvas();
+                window.requestAnimationFrame(loop);
+            });
+        };
+
+
+    </script>
+</head>
+
+<body>
+    <!-- clock -->
+    <div id="clock" class="statusBar" style="text-align: right;">
+    </div>
+    <!-- frame number for debug in top corner-->
+    <div id="counter" class="statusBar" style="text-align:center">  
+        
+    </div>
+    <!-- fps for debug in top corner-->
+    <div id="fps" class="statusBar"
+        style="text-align: left;">
+        frame count goes here</div>
+    <!-- canvas is rest of windows below fps div-->
+    <canvas id="canvas" class="graphics" ></canvas> 
+    <!--<canvas id="canvas" width="640" height="480" style="position: absolute; top: 100; left: 0; width: 100%; height: 90%; background-color: #444;"></canvas>
+    -->
+    </div>
+</body>
